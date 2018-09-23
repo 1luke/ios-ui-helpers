@@ -7,7 +7,7 @@
 
 import UIKit
 
-public protocol KeyboardFrameObserver: class {
+public protocol KeyboardFrameObserving: class {
     /// The keyboard height set by keyboard notification observer.
     ///
     /// * Appearing keyboard: value is set **before** _keyboardWillShow(withAnimation: duration:)_
@@ -31,18 +31,18 @@ public protocol KeyboardFrameObserver: class {
     /// `keyboardHeight` is set when this method is called.
     /// - Parameter options: Animation options used by the system.
     /// - Parameter duration: Animation duration used by the system.
-    func keyboardWillShow(withAnimation options: UIViewAnimationOptions?, duration: TimeInterval?)
+    func keyboardWillShow(withAnimation options: UIView.AnimationOptions?, duration: TimeInterval?)
 
     /// Keyboard will hide with given animation `options` and `duration`
     /// `keyboardHeight` is set after this method is invoked.
     /// This is intended to allow operations that depend on `keyboardHeight` old value.
     /// - Parameter options: Animation options used by the system.
     /// - Parameter duration: Animation duration used by the system.
-    func willHideKeyboard(withAnimation options: UIViewAnimationOptions?, duration: TimeInterval?)
+    func willHideKeyboard(withAnimation options: UIView.AnimationOptions?, duration: TimeInterval?)
 }
 
-public extension KeyboardFrameObserver {
-    var notificationName: Notification.Name { return NSNotification.Name.UIKeyboardWillChangeFrame }
+public extension KeyboardFrameObserving {
+    var notificationName: Notification.Name { return UIResponder.keyboardWillChangeFrameNotification }
 
     func addKeyboardFrameObserver(selector: Selector, target: Any? = nil) {
         NotificationCenter.default.addObserver(
@@ -57,23 +57,23 @@ public extension KeyboardFrameObserver {
     }
 
     func didReceiveKeyboardNotification(_ notification: NSNotification) {
-        guard notification.name == NSNotification.Name.UIKeyboardWillChangeFrame else {
+        guard notification.name == UIResponder.keyboardWillChangeFrameNotification else {
             return
         }
 
         if let userInfo = notification.userInfo {
             let height: CGFloat = {
                 /// UIScreen to keyboard bounds symmetric difference (Screen.bounds - Keyboard.bounds).
-                let symmetricDifference = userInfo[UIKeyboardFrameEndUserInfoKey] as? NSValue
+                let symmetricDifference = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue
                 let difference: CGRect = symmetricDifference?.cgRectValue ?? UIScreen.main.bounds
                 return UIScreen.main.bounds.bottomY() - difference.origin.y
             }()
 
-            let duration: TimeInterval? = (userInfo[UIKeyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue
+            let duration: TimeInterval? = (userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue
 
-            let animationOptions: UIViewAnimationOptions? = {
-                let rawValue: UInt? = (userInfo[UIKeyboardAnimationCurveUserInfoKey] as? NSNumber)?.uintValue
-                return  rawValue == nil ? nil : UIViewAnimationOptions.init(rawValue: rawValue!)
+            let animationOptions: UIView.AnimationOptions? = {
+                let rawValue: UInt? = (userInfo[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.uintValue
+                return  rawValue == nil ? nil : UIView.AnimationOptions.init(rawValue: rawValue!)
             }()
 
             if height > 0 {
@@ -83,6 +83,43 @@ public extension KeyboardFrameObserver {
                 willHideKeyboard(withAnimation: animationOptions, duration: duration)
                 keyboardHeight = height
             }
+        }
+    }
+}
+
+public extension UIScrollView {
+    public class KeyboardObserver: KeyboardFrameObserving {
+        let scrollView: UIScrollView
+
+        init(for scrollView: UIScrollView) {
+            self.scrollView = scrollView
+        }
+
+        deinit {
+            removeKeyboardFrameObserver()
+        }
+
+        public func start() {
+            addKeyboardFrameObserver(selector: #selector(keyboardNotification(notification:)))
+        }
+
+        @objc func keyboardNotification(notification: NSNotification) {
+            didReceiveKeyboardNotification(notification)
+        }
+
+        private var initialContentInsets: UIEdgeInsets = .zero
+
+        // MARK: KeyboardFrameObserver
+
+        public var keyboardHeight: CGFloat = 0
+
+        public func keyboardWillShow(withAnimation options: UIView.AnimationOptions?, duration: TimeInterval?) {
+            initialContentInsets = scrollView.contentInset
+            scrollView.contentInset = initialContentInsets.addingTo(bottom: keyboardHeight)
+        }
+
+        public func willHideKeyboard(withAnimation options: UIView.AnimationOptions?, duration: TimeInterval?) {
+            scrollView.contentInset = initialContentInsets
         }
     }
 }
