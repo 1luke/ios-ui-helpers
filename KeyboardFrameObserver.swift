@@ -88,7 +88,10 @@ public extension KeyboardFrameObserving {
 }
 
 public extension UIScrollView {
-    public class KeyboardObserver: KeyboardFrameObserving {
+    /// Adjusts `contentInsets` for keyboard frame change.
+    /// Initiate keyboaard observing to start `contentInsets` auto-adjustment.
+    /// Remove keyboard observer to stop observing.
+    public class ContentInsetsForKeyboardAdjuster: KeyboardFrameObserving {
         let scrollView: UIScrollView
 
         init(for scrollView: UIScrollView) {
@@ -99,7 +102,7 @@ public extension UIScrollView {
             removeKeyboardFrameObserver()
         }
 
-        public func start() {
+        public func startKeyboardFrameObserving() {
             addKeyboardFrameObserver(selector: #selector(keyboardNotification(notification:)))
         }
 
@@ -123,3 +126,21 @@ public extension UIScrollView {
         }
     }
 }
+
+/* Example usage:
+
+ lazy var contentInsetsForKeyboardAdjuster: UITableView.ContentInsetsForKeyboardAdjuster = {
+     return UITableView.ContentInsetsForKeyboardAdjuster(for: self.tableView)
+ }()
+
+ public override func viewWillAppear(_ animated: Bool) {
+     super.viewWillAppear(animated)
+     contentInsetsForKeyboardAdjuster.startKeyboardFrameObserving()
+ }
+
+ public override func viewWillDisappear(_ animated: Bool) {
+     super.viewWillDisappear(animated)
+     contentInsetsForKeyboardAdjuster.removeKeyboardFrameObserver()
+ }
+
+ */
