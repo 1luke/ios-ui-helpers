@@ -89,7 +89,7 @@ public extension KeyboardFrameObserving {
 
 public extension UIScrollView {
     /// Adjusts `contentInsets` for keyboard frame change.
-    /// Initiate keyboaard observing to start `contentInsets` auto-adjustment.
+    /// Initiate keyboard observing to start `contentInsets` auto-adjustment.
     /// Remove keyboard observer to stop observing.
     public class ContentInsetsForKeyboardAdjuster: KeyboardFrameObserving {
         let scrollView: UIScrollView
